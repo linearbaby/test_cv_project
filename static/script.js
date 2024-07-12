@@ -28,7 +28,7 @@ const drawFaceRectangles = (video, canvas, faces) => {
 };
 
 const startFaceDetection = (video, canvas, deviceId) => {
-  const socket = new WebSocket('ws://localhost:8000/face-detection');
+  const socket = new WebSocket("wss://" + location.host + "/face-detection");
   let intervalId;
 
   // Connection opened
@@ -107,7 +107,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
       socket.close();
     }
 
-    const deviceId = cameraSelect.selectedOptions[0].value;
+    const deviceId = 0;
     socket = startFaceDetection(video, canvas, deviceId);
   });
 
