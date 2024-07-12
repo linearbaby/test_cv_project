@@ -1,4 +1,6 @@
 EDA.ipynb
-Untitled.jpg
+*.jpg
+*.png
 venv
 **__pycache__
+deepface

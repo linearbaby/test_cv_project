@@ -1,100 +1,111 @@
-from src.predict import get_face_bb_emotion
+from src.predict import get_face_bb_emotion, prepare_model
 
+from fastapi.staticfiles import StaticFiles
 import asyncio
 from typing import List, Tuple
 import cv2
-import numpy as npб
+import numpy as np
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import logging
 
 
-app =FastAPI() # initialize FastAPI
+app = FastAPI() # initialize FastAPI
+logger = logging.getLogger("uvicorn")
 
-# initialize the classifier that we will use
-cascade_classifier = cv2.CascadeClassifier() 
 
 class Faces(BaseModel):
-    """ This is a pydantic model to define the structure of the streaming data 
-    that we will be sending the the cv2 Classifier to make predictions
-    It expects a List of a Tuple of 4 integers
+    """ 
+    Структура данных для отправки результатов детекции
+    на фронт. 
     """
     faces: List[Tuple[int, int, int, int]]
-    emotion: str
+    emotions: List[str]
 
-async def receive(websocket: WebSocket, queue: asyncio.Queue):
-    """
-    This is the asynchronous function that will be used to receive webscoket 
-    connections from the web page
-    """
-    bytes = await websocket.receive_bytes()
-    try:
-        queue.put_nowait(bytes)
-    except asyncio.QueueFull:
-        pass
 
-async def detect(websocket: WebSocket, queue: asyncio.Queue):
+async def receive(websocket: WebSocket, latest_image):
     """
-    This function takes the received request and sends it to our classifier
-    which then goes through the data to detect the presence of a human face
-    and returns the location of the face from the continous stream of visual data as a
-    list of Tuple of 4 integers that will represent the 4 Sides of a rectangle
+    Постоянно принимает входящие данные из сокета.
     """
-    logger = logging.getLogger('uvicorn.access')
     while True:
-        bytes = await queue.get()
-        data = np.frombuffer(bytes, dtype=np.uint8)
-        logger.info("beb")
-        img = cv2.imdecode(data, 1)
-        faces = get_face_bb_emotion(img)
-        emotions = []
-        faces_bb = []
-        for face in faces:
-            emotions.append(face.get("dominant_emotion"))
-            region = face.get("region")
-            if region:
-                region = [
-                    region["x"],
-                    region["y"],
-                    region["w"],
-                    region["h"],
-                ]
-            faces_bb.append(region)
+        bytes = await websocket.receive_bytes()
+        latest_image["data"] = bytes
+        logger.debug("recieved bytes")
+    
 
-        logger.info(faces_bb, emotions)
+async def detect(websocket: WebSocket, latest_image):
+    """
+    В данной функции берем последний пришедший кадр с фронта, 
+    и выполняем на нем детекцию и классификацию эмоции.
+    Затем отправляем во фронт по вебсокету
+    """
+    while True:
+        if "data" in latest_image:
+            try:
+                data = np.frombuffer(latest_image.pop("data"), dtype=np.uint8)
+                img = cv2.imdecode(data, 1)
+                faces = get_face_bb_emotion(img)
+            except ValueError as err:
+                logger.debug(str(err))
+                faces = [] # empty array
 
-        await websocket.send_json(Faces(
-            faces=faces_bb,
-            emotions=emotions,
-        ).dict())
+            emotions = []
+            faces_bb = []
+            logger.info(str(faces))
+            for face in faces:
+                emotions.append(face.get("dominant_emotion"))
+                logger.info(str(emotions))
+                region = face.get("region")
+                if region:
+                    region = [
+                        region["x"],
+                        region["y"],
+                        region["w"],
+                        region["h"],
+                    ]
+                faces_bb.append(region)
+                logger.info(str(faces_bb))
+
+            logger.debug(f"{faces_bb=}, {emotions=}")
+
+            await websocket.send_json(Faces(
+                faces=faces_bb,
+                emotions=emotions,
+            ).dict())
+
+        logger.debug("sleeping")
+        await asyncio.sleep(1e-3)
+
 
 @app.websocket("/face-detection")
 async def face_detection(websocket: WebSocket):
     """
-    This is the endpoint that we will be sending request to from the 
-    frontend
+    websocket ендпоинт для стриминга предсказаний.
     """
+
+    # можно было бы использовать asyncio.Queue, но тогда если наш 
+    # детектор не успевает за рантаймом, он будет детектить с опозданием
+    # а в этом случае, детектиться будет последнее пришедшее изображение
+    latest_image = {}
     await websocket.accept()
-    queue: asyncio.Queue = asyncio.Queue(maxsize=10)
-    detect_task = asyncio.create_task(detect(websocket, queue))
+    detect_task = asyncio.create_task(detect(websocket, latest_image))
+    receive_task = asyncio.create_task(receive(websocket, latest_image))
+
     try:
-        while True:
-            await receive(websocket, queue)
+        await receive_task
     except WebSocketDisconnect:
+        receive_task.cancel()
         detect_task.cancel()
         await websocket.close()
+
 
 @app.on_event("startup")
 async def startup():
     """
-    This tells fastapi to load the classifier upon app startup
-    so that we don't have to wait for the classifier to be loaded after making a request
+    Загрузка модели
     """
+    prepare_model()
 
-    logger = logging.getLogger("uvicorn.access")
-    handler = logging.StreamHandler()
-    handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
-    logger.addHandler(handler)
 
+# серв статики, обязательно в конце иначе ендпоинты замылятся 
 app.mount("/", StaticFiles(directory="static",html = True, follow_symlink=True), name="static")

@@ -10,7 +10,7 @@ const drawFaceRectangles = (video, canvas, faces) => {
   ctx.clearRect(0, 0, ctx.width, ctx.height);
   for (let i = 0; i < faces.faces.length; i++) {
     const [x, y, width, height] = faces.faces[i];
-    const emotion = faces.emotion[i];
+    const emotion = faces.emotions[i];
     ctx.strokeStyle = "#49fb35";
     ctx.beginPath();
     ctx.rect(x, y, width, height);
@@ -18,7 +18,12 @@ const drawFaceRectangles = (video, canvas, faces) => {
 
     ctx.fillStyle = "#49fb35";
     ctx.font = "16px Arial";
-    ctx.fillText(emotion, x, y + height + 20);  // Adjust y + height + 20 for text positioning
+    // center text horizontally at [x,y]
+    ctx.textAlign='center';
+
+    // center text vertically at [x,y]
+    ctx.textBaseline='middle';
+    ctx.fillText(emotion, x + width / 2, y - 20);  // Adjust y + height + 20 for text positioning
   }
 };
 
