@@ -12,6 +12,17 @@
 </head>
 
 <body>
+
+  <div id="warning-message" style="display: none; color: red;">
+    Warning: This functionality may be broken on mobile devices.
+  </div>
+  <script>
+    // JavaScript to detect mobile devices and display a warning message
+    if (/Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+      document.getElementById('warning-message').style.display = 'block';
+    }
+  </script>
+
   <div class="container">
     <h1 class="my-3">Simple - Real time face detection</h1>
     <form id="form-connect">
