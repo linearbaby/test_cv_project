@@ -38,7 +38,8 @@ def validate_configs(default_config_schema, config, mismatched={}, prefix=""):
         else:
             # Check if types match
             if type(value2) != type(value1):
-                mismatched[prefix + key] = f"types mismatch: {type(value2)} != {type(value1)}"
+                mismatched[prefix +
+                           key] = f"types mismatch: {type(value2)} != {type(value1)}"
 
     return mismatched
 
@@ -51,6 +52,7 @@ OmegaConf.resolve(config)
 OmegaConf.resolve(default_config)
 
 # Validate merged config against the schema
-mismatched = validate_configs(OmegaConf.to_container(default_config), OmegaConf.to_container(config))
+mismatched = validate_configs(OmegaConf.to_container(
+    default_config), OmegaConf.to_container(config))
 if len(mismatched) > 0:
     raise ValueError(f"Configs have different keys: {mismatched}")

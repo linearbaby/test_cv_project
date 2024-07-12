@@ -5,13 +5,15 @@ from src.config import config
 
 DETECTION_MODEL = config.DETECTION_MODEL
 
+
 def prepare_model():
     build_model(DETECTION_MODEL)
 
+
 def get_face_bb_emotion(img):
     results = DeepFace.analyze(
-        img, 
+        img,
         actions=['emotion'],
-        detector_backend = DETECTION_MODEL
+        detector_backend=DETECTION_MODEL
     )
     return results

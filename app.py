@@ -10,7 +10,7 @@ from pydantic import BaseModel
 import logging
 
 
-app = FastAPI() # initialize FastAPI
+app = FastAPI()  # initialize FastAPI
 logger = logging.getLogger("uvicorn")
 
 
@@ -31,7 +31,7 @@ async def receive(websocket: WebSocket, latest_image):
         bytes = await websocket.receive_bytes()
         latest_image["data"] = bytes
         logger.debug("recieved bytes")
-    
+
 
 async def detect(websocket: WebSocket, latest_image):
     """
@@ -47,7 +47,7 @@ async def detect(websocket: WebSocket, latest_image):
                 faces = get_face_bb_emotion(img)
             except ValueError as err:
                 logger.debug(str(err))
-                faces = [] # empty array
+                faces = []  # empty array
 
             emotions = []
             faces_bb = []
@@ -83,7 +83,7 @@ async def face_detection(websocket: WebSocket):
     websocket ендпоинт для стриминга предсказаний.
     """
 
-    # можно было бы использовать asyncio.Queue, но тогда если наш 
+    # можно было бы использовать asyncio.Queue, но тогда если наш
     # детектор не успевает за рантаймом, он будет детектить с опозданием
     # а в этом случае, детектиться будет последнее пришедшее изображение
     latest_image = {}
@@ -107,5 +107,6 @@ async def startup():
     prepare_model()
 
 
-# серв статики, обязательно в конце иначе ендпоинты замылятся 
-app.mount("/", StaticFiles(directory="static",html = True, follow_symlink=True), name="static")
+# серв статики, обязательно в конце иначе ендпоинты замылятся
+app.mount("/", StaticFiles(directory="static",
+          html=True, follow_symlink=True), name="static")
