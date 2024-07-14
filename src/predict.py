@@ -1,19 +1,14 @@
-from deepface import DeepFace
-from deepface.detectors.DetectorWrapper import build_model
-from src.config import config
+from src.model import ModelEvaluation
 
+model = None
 
-DETECTION_MODEL = config.DETECTION_MODEL
 
 
 def prepare_model():
-    build_model(DETECTION_MODEL)
+    global model
+    model = ModelEvaluation()
 
 
 def get_face_bb_emotion(img):
-    results = DeepFace.analyze(
-        img,
-        actions=['emotion'],
-        detector_backend=DETECTION_MODEL
-    )
+    results = model.get_face_bb_emotion(img)
     return results
